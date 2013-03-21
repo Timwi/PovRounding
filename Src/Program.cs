@@ -27,7 +27,7 @@ namespace PovRounding
         static readonly LineOfText[] LinesOfText = Ut.NewArray(
             new LineOfText { Filename = "Kio.pov", ObjectName = "Kio", Text = "KIO", Font = "Berlin Sans FB", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 },
             new LineOfText { Filename = "Estas.pov", ObjectName = "Estas", Text = "ESTAS...?", Font = "Berlin Sans FB", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 },
-            new LineOfText { Filename = "Kiu.pov", ObjectName = "Kiu", Text = "KIU", Font = "Georgia", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 },  
+            new LineOfText { Filename = "Kiu.pov", ObjectName = "Kiu", Text = "KIU", Font = "Georgia", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 },
             new LineOfText { Filename = "Estis.pov", ObjectName = "Estis", Text = "ESTIS...?", Font = "Georgia", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 },
             new LineOfText { Filename = "Kiu2.pov", ObjectName = "Kiu2", Text = "KIU", Font = "SketchFlow Print", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 },
             new LineOfText { Filename = "Estas2.pov", ObjectName = "Estas2", Text = "ESTAS...?", Font = "SketchFlow Print", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 }
@@ -153,7 +153,7 @@ namespace PovRounding
                         "Back fillet",
                         Enumerable.Range(0, 4).Select(i => displaced[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, textInf.RoundingRadius - textInf.ExtrusionDepth)).JoinString(", "),
                         Enumerable.Range(0, 4).Select(i => displaced[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, comb(textInf.RoundingRadius - textInf.ExtrusionDepth, -textInf.ExtrusionDepth, .76f))).JoinString(", "),
-                        Enumerable.Range(0, 4).Select(i => comb(displaced[i], pts[i], .76f)).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -textInf.ExtrusionDepth)).JoinString(", "),
+                        Enumerable.Range(0, 4).Select(i => comb(pts[i], displaced[i], .76f)).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -textInf.ExtrusionDepth)).JoinString(", "),
                         Enumerable.Range(0, 4).Select(i => pts[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -textInf.ExtrusionDepth)).JoinString(", "));
 
                     Ut.Assert(pts[3] == next[0]);
