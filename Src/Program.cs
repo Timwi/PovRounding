@@ -29,8 +29,8 @@ namespace PovRounding
             new LineOfText { Filename = "Estas.pov", ObjectName = "Estas", Text = "ESTAS...?", Font = "Berlin Sans FB", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 },
             new LineOfText { Filename = "Kiu.pov", ObjectName = "Kiu", Text = "KIU", Font = "Georgia", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 },  
             new LineOfText { Filename = "Estis.pov", ObjectName = "Estis", Text = "ESTIS...?", Font = "Georgia", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 },
-            new LineOfText { Filename = "Kie.pov", ObjectName = "Kie", Text = "KIE", Font = "SketchFlow Print", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 },
-            new LineOfText { Filename = "Estas2.pov", ObjectName = "Estas", Text = "ESTAS...?", Font = "SketchFlow Print", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 }
+            new LineOfText { Filename = "Kiu2.pov", ObjectName = "Kiu2", Text = "KIU", Font = "SketchFlow Print", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 },
+            new LineOfText { Filename = "Estas2.pov", ObjectName = "Estas2", Text = "ESTAS...?", Font = "SketchFlow Print", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 }
         ).Concat(
             Enumerable.Range(1, 5).Select(i => (200 * i).ToString()).Select(num =>
                 new LineOfText { Filename = "Num{0}.pov".Fmt(num), ObjectName = "Num{0}".Fmt(num), Text = num, Font = "ITC Korinna Std", Style = 0, ExtrusionDepth = 12, RoundingRadius = 3 }
