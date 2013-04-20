@@ -252,7 +252,7 @@ namespace PovRounding
             return @"
     // {0}
     bicubic_patch {{
-        type 1 flatness 0.001
+        type 1 flatness 0.0001
         u_steps 4 v_steps 4
         {1},
         {2},

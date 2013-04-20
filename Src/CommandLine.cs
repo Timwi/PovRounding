@@ -33,8 +33,8 @@ namespace PovRounding
         [Option("-r", "--radius"), DocumentationLiteral("Specifies the rounding radius. (Default is 1.)")]
         public float RoundingRadius = 1;
 
-        [Option("-f", "--factor"), DocumentationLiteral("Specifies the Bézier factor. (Default is sqrt(2)**4//3, which gives a rounding close to circular.)")]
-        public float RoundingFactor = 0.55228475f;
+        [Option("-f", "--factor"), DocumentationLiteral("Specifies the Bézier factor. (Default is 0.76. A value of 0.55228475 (which is sqrt(2)**4//3) gives a rounding close to circular. A value near 0 produces a near-flat bevel.)")]
+        public float RoundingFactor = 0.76f;
 
         [IsPositional, IsMandatory, DocumentationLiteral("Specifies how the source curve is generated.")]
         public Render RenderCommand;
