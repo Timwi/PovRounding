@@ -41,7 +41,7 @@ namespace PovRounding
 
         private static void PostBuildCheck(IPostBuildReporter rep)
         {
-            CommandLineParser<CommandLine>.PostBuildStep(rep, null);
+            CommandLineParser.PostBuildStep<CommandLine>(rep, null);
         }
     }
 

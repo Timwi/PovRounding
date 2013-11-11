@@ -36,7 +36,7 @@ namespace PovRounding
             CommandLine cmd;
             try
             {
-                cmd = CommandLineParser<CommandLine>.Parse(args);
+                cmd = CommandLineParser.Parse<CommandLine>(args);
             }
             catch (CommandLineParseException pe)
             {
