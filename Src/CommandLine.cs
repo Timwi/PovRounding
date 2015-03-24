@@ -36,6 +36,9 @@ namespace PovRounding
         [Option("-f", "--factor"), DocumentationLiteral("Specifies the Bézier factor. (Default is 0.76. A value of 0.55228475 (which is sqrt(2)**4//3) gives a rounding close to circular. A value near 0 produces a near-flat bevel.)")]
         public float RoundingFactor = 0.76f;
 
+        [Option("-e", "--extra"), DocumentationLiteral("Specifies a text file containing extra POV-ray code to be added to the declaration of every single object generated.")]
+        public string ExtraCodeFile;
+
         [IsPositional, IsMandatory, DocumentationLiteral("Specifies how the source curve is generated.")]
         public Render RenderCommand;
 

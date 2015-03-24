@@ -44,6 +44,10 @@ namespace PovRounding
                 return 1;
             }
 
+            string extraCode = null;
+            if (cmd.ExtraCodeFile != null)
+                extraCode = File.ReadAllText(cmd.ExtraCodeFile);
+
             var gp = cmd.RenderCommand.GetGraphicsPath();
             Ut.Assert(gp.PathTypes.Length == gp.PathPoints.Length);
             var data = gp.PathTypes.Zip(gp.PathPoints, (pt, pp) => new { Type = (PathPointType) pt, Point = pp }).ToArray();
@@ -102,19 +106,26 @@ namespace PovRounding
             var closedPoints = getPoints(true);
 
             var source = @"
+// Command line:
+// {4}{5}
+
 #declare {3} = union {{
     prism {{
         bezier_spline linear_sweep 0, {0}, {1}
         {2}
         rotate 90*x
+        {6}
     }}".Fmt(
-                cmd.ExtrusionDepth,
-                openPoints.Sum(p => p.Length),
-                openPoints.SelectMany(p => p).Split(4)
-                    .Select(grp => grp.Select(p => "<{0}, {1}>".Fmt(p.X, p.Y)).JoinString(", "))
-                    .JoinString("," + Environment.NewLine)
-                    .Indent(8, false),
-                cmd.ObjectName
+                /* {0} */ cmd.ExtrusionDepth,
+                /* {1} */ openPoints.Sum(p => p.Length),
+                /* {2} */ openPoints.SelectMany(p => p).Split(4)
+                                    .Select(grp => grp.Select(p => "<{0}, {1}>".Fmt(p.X, p.Y)).JoinString(", "))
+                                    .JoinString("," + Environment.NewLine)
+                                    .Indent(8, false),
+                /* {3} */ cmd.ObjectName,
+                /* {4} */ CommandRunner.ArgsToCommandLine(args),
+                /* {5} */ cmd.ExtraCodeFile == null ? null : "\n// Extra code file:\n" + File.ReadAllLines(cmd.ExtraCodeFile).JoinString("\n", prefix: "// "),
+                /* {6} */ extraCode
             );
 
             source += openPoints.SelectMany(gr => gr.Split(4).Select(Enumerable.ToArray).ConsecutivePairs(true)).Select(pair =>
@@ -135,21 +146,24 @@ namespace PovRounding
                     Enumerable.Range(0, 4).Select(i => pts[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, 0)).JoinString(", "),
                     Enumerable.Range(0, 4).Select(i => combine(pts[i], displaced[i], cmd.RoundingFactor)).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, 0)).JoinString(", "),
                     Enumerable.Range(0, 4).Select(i => displaced[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, (-cmd.RoundingRadius) * (1 - cmd.RoundingFactor))).JoinString(", "),
-                    Enumerable.Range(0, 4).Select(i => displaced[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, (-cmd.RoundingRadius))).JoinString(", "));
+                    Enumerable.Range(0, 4).Select(i => displaced[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, (-cmd.RoundingRadius))).JoinString(", "),
+                    extraCode);
 
                 code += patch(
                     "Side",
                     displaced.Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.RoundingRadius)).JoinString(", "),
                     displaced.Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.RoundingRadius * 1 / 3 - cmd.ExtrusionDepth * 1 / 3)).JoinString(", "),
                     displaced.Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, cmd.RoundingRadius * 1 / 3 - cmd.ExtrusionDepth * 2 / 3)).JoinString(", "),
-                    displaced.Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, cmd.RoundingRadius - cmd.ExtrusionDepth)).JoinString(", "));
+                    displaced.Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, cmd.RoundingRadius - cmd.ExtrusionDepth)).JoinString(", "),
+                    extraCode);
 
                 code += patch(
                     "Back fillet",
                     Enumerable.Range(0, 4).Select(i => displaced[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, cmd.RoundingRadius - cmd.ExtrusionDepth)).JoinString(", "),
                     Enumerable.Range(0, 4).Select(i => displaced[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, combine(cmd.RoundingRadius - cmd.ExtrusionDepth, -cmd.ExtrusionDepth, cmd.RoundingFactor))).JoinString(", "),
                     Enumerable.Range(0, 4).Select(i => combine(pts[i], displaced[i], cmd.RoundingFactor)).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.ExtrusionDepth)).JoinString(", "),
-                    Enumerable.Range(0, 4).Select(i => pts[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.ExtrusionDepth)).JoinString(", "));
+                    Enumerable.Range(0, 4).Select(i => pts[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.ExtrusionDepth)).JoinString(", "),
+                    extraCode);
 
                 Ut.Assert(pts[3] == next[0]);
 
@@ -176,21 +190,24 @@ namespace PovRounding
                     Enumerable.Range(0, 4).Select(i => next[0]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, 0)).JoinString(", "),
                     Enumerable.Range(0, 4).Select(i => combine(next[0], fillet[i], cmd.RoundingFactor)).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, 0)).JoinString(", "),
                     Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.RoundingRadius * (1 - cmd.RoundingFactor))).JoinString(", "),
-                    Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.RoundingRadius)).JoinString(", "));
+                    Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.RoundingRadius)).JoinString(", "),
+                    extraCode);
 
                 code += patch(
                     "Side corner fillet",
                     Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.RoundingRadius)).JoinString(", "),
                     Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, combine(-cmd.RoundingRadius, cmd.RoundingRadius - cmd.ExtrusionDepth, 1f / 3f))).JoinString(", "),
                     Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, combine(-cmd.RoundingRadius, cmd.RoundingRadius - cmd.ExtrusionDepth, 2f / 3f))).JoinString(", "),
-                    Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, cmd.RoundingRadius - cmd.ExtrusionDepth)).JoinString(", "));
+                    Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, cmd.RoundingRadius - cmd.ExtrusionDepth)).JoinString(", "),
+                    extraCode);
 
                 code += patch(
                     "Back corner fillet",
                     Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, cmd.RoundingRadius - cmd.ExtrusionDepth)).JoinString(", "),
                     Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, combine(cmd.RoundingRadius - cmd.ExtrusionDepth, -cmd.ExtrusionDepth, cmd.RoundingFactor))).JoinString(", "),
                     Enumerable.Range(0, 4).Select(i => combine(next[0], fillet[i], cmd.RoundingFactor)).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.ExtrusionDepth)).JoinString(", "),
-                    Enumerable.Range(0, 4).Select(i => next[0]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.ExtrusionDepth)).JoinString(", "));
+                    Enumerable.Range(0, 4).Select(i => next[0]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.ExtrusionDepth)).JoinString(", "),
+                    extraCode);
 
                 return code;
 
@@ -247,7 +264,7 @@ namespace PovRounding
             return one * (1 - ratioOfTwo) + two * ratioOfTwo;
         }
 
-        private static string patch(string comment, string row1, string row2, string row3, string row4)
+        private static string patch(string comment, string row1, string row2, string row3, string row4, string extraCode)
         {
             return @"
     // {0}
@@ -259,7 +276,8 @@ namespace PovRounding
         {3},
         {4}
         rotate 180*x
-    }}".Fmt(comment, row1, row2, row3, row4);
+        {5}
+    }}".Fmt(comment, row1, row2, row3, row4, extraCode);
         }
     }
 }
