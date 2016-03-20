@@ -5,7 +5,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PovRounding", "Src\PovRound
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Util", "..\RT.Util\Src\RT.Util.csproj", "{8D0FE79C-AD8D-475C-9E6F-9CAE85365B5D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Generex", "..\..\..\Generex\Generex.csproj", "{AD37F193-49A3-4A3D-8BF1-122D5457C7A6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Generex", "..\Generex\Src\Generex.csproj", "{AD37F193-49A3-4A3D-8BF1-122D5457C7A6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

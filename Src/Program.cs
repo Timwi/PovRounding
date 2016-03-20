@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
@@ -14,17 +13,6 @@ namespace PovRounding
 {
     class Program
     {
-        //static readonly LineOfText[] LinesOfText = Ut.NewArray(
-        //    new LineOfText { Filename = "Kio.pov", ObjectName = "Kio", Text = "KIO", Font = "Berlin Sans FB", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 },
-        //    new LineOfText { Filename = "Estas.pov", ObjectName = "Estas", Text = "ESTAS...?", Font = "Berlin Sans FB", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 },
-        //    new LineOfText { Filename = "Kiu.pov", ObjectName = "Kiu", Text = "KIU", Font = "Georgia", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 },
-        //    new LineOfText { Filename = "Estis.pov", ObjectName = "Estis", Text = "ESTIS...?", Font = "Georgia", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 },
-        //    new LineOfText { Filename = "Kiu2.pov", ObjectName = "Kiu2", Text = "KIU", Font = "SketchFlow Print", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 },
-        //    new LineOfText { Filename = "Estas2.pov", ObjectName = "Estas2", Text = "ESTAS...?", Font = "SketchFlow Print", Style = 0, ExtrusionDepth = 15, RoundingRadius = 3 }
-        //).ToArray();
-
-        //const string DestinationDirectory = @"D:\Daten\Upload\Jeopardy";
-
         static int Main(string[] args)
         {
             try { Console.OutputEncoding = Encoding.UTF8; }
@@ -48,7 +36,7 @@ namespace PovRounding
             if (cmd.ExtraCodeFile != null)
                 extraCode = File.ReadAllText(cmd.ExtraCodeFile);
 
-            var gp = cmd.RenderCommand.GetGraphicsPath();
+            var gp = cmd.GetGraphicsPath();
             Ut.Assert(gp.PathTypes.Length == gp.PathPoints.Length);
             var data = gp.PathTypes.Zip(gp.PathPoints, (pt, pp) => new { Type = (PathPointType) pt, Point = pp }).ToArray();
             Ut.Assert(data.Length > 0 && data[0].Type == PathPointType.Start);
@@ -79,7 +67,7 @@ namespace PovRounding
 
             var match = regex.MatchExact(data);
             if (match == null)
-                Debugger.Break();
+                throw new InvalidOperationException("The GraphicsPath data has not been recognized by Generex. This indicates a bug in the Generex grammar.");
 
             var curves = match.Result.ToArray();
 
@@ -136,18 +124,16 @@ namespace PovRounding
                 var displaced = displace(pts, cmd.RoundingRadius);
                 var displacedNext = displace(next, cmd.RoundingRadius);
 
-                if (displaced.Any(p => double.IsNaN(p.X) || double.IsNaN(p.Y)))
-                    Debugger.Break();
-
                 var code = "";
 
-                code += patch(
-                    "Front fillet",
-                    Enumerable.Range(0, 4).Select(i => pts[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, 0)).JoinString(", "),
-                    Enumerable.Range(0, 4).Select(i => combine(pts[i], displaced[i], cmd.RoundingFactor)).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, 0)).JoinString(", "),
-                    Enumerable.Range(0, 4).Select(i => displaced[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, (-cmd.RoundingRadius) * (1 - cmd.RoundingFactor))).JoinString(", "),
-                    Enumerable.Range(0, 4).Select(i => displaced[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, (-cmd.RoundingRadius))).JoinString(", "),
-                    extraCode);
+                if (!cmd.SkipFront)
+                    code += patch(
+                        "Front fillet",
+                        Enumerable.Range(0, 4).Select(i => pts[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, 0)).JoinString(", "),
+                        Enumerable.Range(0, 4).Select(i => combine(pts[i], displaced[i], cmd.RoundingFactor)).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, 0)).JoinString(", "),
+                        Enumerable.Range(0, 4).Select(i => displaced[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, (-cmd.RoundingRadius) * (1 - cmd.RoundingFactor))).JoinString(", "),
+                        Enumerable.Range(0, 4).Select(i => displaced[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, (-cmd.RoundingRadius))).JoinString(", "),
+                        extraCode, cmd.Smoothness);
 
                 code += patch(
                     "Side",
@@ -155,15 +141,16 @@ namespace PovRounding
                     displaced.Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.RoundingRadius * 1 / 3 - cmd.ExtrusionDepth * 1 / 3)).JoinString(", "),
                     displaced.Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, cmd.RoundingRadius * 1 / 3 - cmd.ExtrusionDepth * 2 / 3)).JoinString(", "),
                     displaced.Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, cmd.RoundingRadius - cmd.ExtrusionDepth)).JoinString(", "),
-                    extraCode);
+                    extraCode, cmd.Smoothness);
 
-                code += patch(
-                    "Back fillet",
-                    Enumerable.Range(0, 4).Select(i => displaced[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, cmd.RoundingRadius - cmd.ExtrusionDepth)).JoinString(", "),
-                    Enumerable.Range(0, 4).Select(i => displaced[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, combine(cmd.RoundingRadius - cmd.ExtrusionDepth, -cmd.ExtrusionDepth, cmd.RoundingFactor))).JoinString(", "),
-                    Enumerable.Range(0, 4).Select(i => combine(pts[i], displaced[i], cmd.RoundingFactor)).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.ExtrusionDepth)).JoinString(", "),
-                    Enumerable.Range(0, 4).Select(i => pts[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.ExtrusionDepth)).JoinString(", "),
-                    extraCode);
+                if (!cmd.SkipBack)
+                    code += patch(
+                        "Back fillet",
+                        Enumerable.Range(0, 4).Select(i => displaced[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, cmd.RoundingRadius - cmd.ExtrusionDepth)).JoinString(", "),
+                        Enumerable.Range(0, 4).Select(i => displaced[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, combine(cmd.RoundingRadius - cmd.ExtrusionDepth, -cmd.ExtrusionDepth, cmd.RoundingFactor))).JoinString(", "),
+                        Enumerable.Range(0, 4).Select(i => combine(pts[i], displaced[i], cmd.RoundingFactor)).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.ExtrusionDepth)).JoinString(", "),
+                        Enumerable.Range(0, 4).Select(i => pts[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.ExtrusionDepth)).JoinString(", "),
+                        extraCode, cmd.Smoothness);
 
                 Ut.Assert(pts[3] == next[0]);
 
@@ -185,13 +172,14 @@ namespace PovRounding
                     displacedNext[0]
                 );
 
-                code += patch(
-                    "Front corner fillet",
-                    Enumerable.Range(0, 4).Select(i => next[0]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, 0)).JoinString(", "),
-                    Enumerable.Range(0, 4).Select(i => combine(next[0], fillet[i], cmd.RoundingFactor)).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, 0)).JoinString(", "),
-                    Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.RoundingRadius * (1 - cmd.RoundingFactor))).JoinString(", "),
-                    Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.RoundingRadius)).JoinString(", "),
-                    extraCode);
+                if (!cmd.SkipFront)
+                    code += patch(
+                        "Front corner fillet",
+                        Enumerable.Range(0, 4).Select(i => next[0]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, 0)).JoinString(", "),
+                        Enumerable.Range(0, 4).Select(i => combine(next[0], fillet[i], cmd.RoundingFactor)).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, 0)).JoinString(", "),
+                        Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.RoundingRadius * (1 - cmd.RoundingFactor))).JoinString(", "),
+                        Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.RoundingRadius)).JoinString(", "),
+                        extraCode, cmd.Smoothness);
 
                 code += patch(
                     "Side corner fillet",
@@ -199,15 +187,16 @@ namespace PovRounding
                     Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, combine(-cmd.RoundingRadius, cmd.RoundingRadius - cmd.ExtrusionDepth, 1f / 3f))).JoinString(", "),
                     Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, combine(-cmd.RoundingRadius, cmd.RoundingRadius - cmd.ExtrusionDepth, 2f / 3f))).JoinString(", "),
                     Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, cmd.RoundingRadius - cmd.ExtrusionDepth)).JoinString(", "),
-                    extraCode);
+                    extraCode, cmd.Smoothness);
 
-                code += patch(
-                    "Back corner fillet",
-                    Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, cmd.RoundingRadius - cmd.ExtrusionDepth)).JoinString(", "),
-                    Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, combine(cmd.RoundingRadius - cmd.ExtrusionDepth, -cmd.ExtrusionDepth, cmd.RoundingFactor))).JoinString(", "),
-                    Enumerable.Range(0, 4).Select(i => combine(next[0], fillet[i], cmd.RoundingFactor)).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.ExtrusionDepth)).JoinString(", "),
-                    Enumerable.Range(0, 4).Select(i => next[0]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.ExtrusionDepth)).JoinString(", "),
-                    extraCode);
+                if (!cmd.SkipBack)
+                    code += patch(
+                        "Back corner fillet",
+                        Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, cmd.RoundingRadius - cmd.ExtrusionDepth)).JoinString(", "),
+                        Enumerable.Range(0, 4).Select(i => fillet[i]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, combine(cmd.RoundingRadius - cmd.ExtrusionDepth, -cmd.ExtrusionDepth, cmd.RoundingFactor))).JoinString(", "),
+                        Enumerable.Range(0, 4).Select(i => combine(next[0], fillet[i], cmd.RoundingFactor)).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.ExtrusionDepth)).JoinString(", "),
+                        Enumerable.Range(0, 4).Select(i => next[0]).Select(p => "<{0}, {1}, {2}>".Fmt(p.X, p.Y, -cmd.ExtrusionDepth)).JoinString(", "),
+                        extraCode, cmd.Smoothness);
 
                 return code;
 
@@ -235,16 +224,21 @@ namespace PovRounding
 
         private static PointF[] displace(PointF[] pts, float radius)
         {
-            return Ut.NewArray(
+            var ret = Ut.NewArray(
                 displace(pts[0], pts[0], pts[1], radius),
                 displace(pts[1], pts[0], pts[2], radius),
                 displace(pts[2], pts[1], pts[3], radius),
                 displace(pts[3], pts[2], pts[3], radius)
             );
+            if (ret.Any(p => double.IsNaN(p.X) || double.IsNaN(p.Y)))
+                throw new InvalidOperationException("The curve contains a Bézier curve in which one of the control points is equal to its adjacent endpoint. This is not allowed.");
+            return ret;
         }
 
         private static PointF displace(PointF pt, PointF on, PointF right, float radius)
         {
+            if (on == right)
+                throw new InvalidOperationException("The curve contains a Bézier curve in which two points are equal ({0}). This is not allowed.".Fmt(on));
             return pt - normalize(on.Y - right.Y, right.X - on.X, radius);
         }
 
@@ -264,20 +258,20 @@ namespace PovRounding
             return one * (1 - ratioOfTwo) + two * ratioOfTwo;
         }
 
-        private static string patch(string comment, string row1, string row2, string row3, string row4, string extraCode)
+        private static string patch(string comment, string row1, string row2, string row3, string row4, string extraCode, int smoothness)
         {
-            return @"
-    // {0}
+            return $@"
+    // {comment}
     bicubic_patch {{
         type 1 flatness 0.0001
-        u_steps 4 v_steps 4
-        {1},
-        {2},
-        {3},
-        {4}
+        u_steps {smoothness} v_steps {smoothness}
+        {row1},
+        {row2},
+        {row3},
+        {row4}
         rotate 180*x
-        {5}
-    }}".Fmt(comment, row1, row2, row3, row4, extraCode);
+        {extraCode}
+    }}";
         }
     }
 }
